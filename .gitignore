@@ -1,0 +1,5 @@
+# Build artifacts
+*.o
+solution/sort
+broken/sort
+_sort_san
