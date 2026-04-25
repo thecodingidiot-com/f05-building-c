@@ -31,7 +31,10 @@ int main(int argc, char **argv)
     while (fgets(buf, sizeof(buf), in)) {
         buf[strcspn(buf, "\n")] = '\0';
         if (count == capacity) {
-            new_capacity = capacity == 0 ? 16 : capacity * 2;
+            if (capacity == 0)
+                new_capacity = 16;
+            else
+                new_capacity = capacity * 2;
             lines = realloc(lines, new_capacity * sizeof(char *));
             capacity = new_capacity;
         }

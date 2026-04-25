@@ -17,7 +17,10 @@ int lines_append(lines_t *lines, const char *line)
     char    *copy;
 
     if (lines->count == lines->capacity) {
-        new_capacity = lines->capacity == 0 ? 16 : lines->capacity * 2;
+        if (lines->capacity == 0)
+            new_capacity = 16;
+        else
+            new_capacity = lines->capacity * 2;
         grown = realloc(lines->data, new_capacity * sizeof(char *));
         if (!grown)
             return (-1);
