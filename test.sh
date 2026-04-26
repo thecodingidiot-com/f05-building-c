@@ -124,6 +124,21 @@ check_sort_correct() {
     fi
 }
 
+check_sort_missing_file() {
+    local label="./sort returns exit code 1 on a missing file"
+    if [[ ! -x sort ]]; then
+        fail "$label" "no ./sort binary found"
+        return
+    fi
+    ./sort /nonexistent_f05_test_file >/dev/null 2>&1
+    local code=$?
+    if [[ "$code" -eq 1 ]]; then
+        pass "$label"
+    else
+        fail "$label" "expected exit code 1, got $code"
+    fi
+}
+
 check_valgrind() {
     local label="./sort runs clean under valgrind"
     if [[ ! -x sort ]]; then
@@ -179,8 +194,9 @@ The directory must contain your finished multi-file project:
 
   1. make builds the project cleanly with no warnings.
   2. ./sort sorts the lines of a file alphabetically.
-  3. ./sort runs clean under valgrind --leak-check=full.
-  4. A rebuild with -fsanitize=address -fsanitize=undefined runs clean
+  3. ./sort returns exit code 1 when given a missing file.
+  4. ./sort runs clean under valgrind --leak-check=full.
+  5. A rebuild with -fsanitize=address -fsanitize=undefined runs clean
      on the same input.
 
 HELP
@@ -198,6 +214,7 @@ echo ""
 
 if check_make; then
     check_sort_correct
+    check_sort_missing_file
     check_valgrind
     check_sanitisers
 fi
