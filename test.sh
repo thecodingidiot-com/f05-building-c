@@ -139,6 +139,21 @@ check_sort_missing_file() {
     fi
 }
 
+check_sort_no_args() {
+    local label="./sort returns exit code 1 with no arguments"
+    if [[ ! -x sort ]]; then
+        fail "$label" "no ./sort binary found"
+        return
+    fi
+    ./sort >/dev/null 2>&1
+    local code=$?
+    if [[ "$code" -eq 1 ]]; then
+        pass "$label"
+    else
+        fail "$label" "expected exit code 1, got $code"
+    fi
+}
+
 check_valgrind() {
     local label="./sort runs clean under valgrind"
     if [[ ! -x sort ]]; then
@@ -155,7 +170,7 @@ check_valgrind() {
 
 check_sanitisers() {
     local label="rebuild with -fsanitize=address,undefined runs clean"
-    if ! gcc -Wall -Wextra -g -fsanitize=address -fsanitize=undefined \
+    if ! gcc -Wall -Wextra -g -std=c99 -fsanitize=address -fsanitize=undefined \
         sort.c lines.c -o _sort_san 2>/tmp/_san_build.log; then
         fail "$label" "sanitiser build failed — see /tmp/_san_build.log"
         return
@@ -195,8 +210,9 @@ The directory must contain your finished multi-file project:
   1. make builds the project cleanly with no warnings.
   2. ./sort sorts the lines of a file alphabetically.
   3. ./sort returns exit code 1 when given a missing file.
-  4. ./sort runs clean under valgrind --leak-check=full.
-  5. A rebuild with -fsanitize=address -fsanitize=undefined runs clean
+  4. ./sort returns exit code 1 when given no arguments.
+  5. ./sort runs clean under valgrind --leak-check=full.
+  6. A rebuild with -fsanitize=address -fsanitize=undefined runs clean
      on the same input.
 
 HELP
@@ -215,6 +231,7 @@ echo ""
 if check_make; then
     check_sort_correct
     check_sort_missing_file
+    check_sort_no_args
     check_valgrind
     check_sanitisers
 fi
