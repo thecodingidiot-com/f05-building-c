@@ -1,6 +1,6 @@
 NAME    = sort
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g
+CFLAGS  = -Wall -Wextra -g -std=c99
 SRCS    = sort.c lines.c
 OBJS    = $(SRCS:.c=.o)
 
