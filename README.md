@@ -72,5 +72,5 @@ project is clean.
 
 ## License
 
-[GPLv2](LICENSE) — the tester code and reference solution are free to
-read, modify, and redistribute under the same terms.
+[MIT License](LICENSE) — the tester code and reference solution are free to
+read, modify, and redistribute.
