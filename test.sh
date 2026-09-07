@@ -170,7 +170,7 @@ check_valgrind() {
 
 check_sanitisers() {
     local label="rebuild with -fsanitize=address,undefined runs clean"
-    if ! gcc -Wall -Wextra -g -std=c99 -fsanitize=address -fsanitize=undefined \
+    if ! gcc -Wall -Wextra -Werror -std=c99 -g -O0 -fsanitize=address -fsanitize=undefined \
         sort.c lines.c -o _sort_san 2>/tmp/_san_build.log; then
         fail "$label" "sanitiser build failed — see /tmp/_san_build.log"
         return
@@ -180,6 +180,66 @@ check_sanitisers() {
     else
         fail "$label" "sanitiser run reported errors — see /tmp/_san_run.log"
     fi
+}
+
+check_release() {
+    local label="make release builds a stripped, optimised binary"
+    local debug_size release_size obj_before obj_after out rc
+
+    make fclean >/dev/null 2>&1 || true
+    if ! make >/dev/null 2>/tmp/_rel_debug.log; then
+        fail "$label" "the debug build failed — see /tmp/_rel_debug.log"
+        return
+    fi
+    debug_size=$(stat -c%s sort)
+    obj_before=$(stat -c%.Y sort.o 2>/dev/null || echo 0)
+
+    # A 'release' named in .PHONY but never given a recipe exits 0 with
+    # "Nothing to be done", so the exit status alone proves nothing.
+    out=$(make release 2>/tmp/_rel_build.log); rc=$?
+    if (( rc != 0 )); then
+        fail "$label" "no working 'release' target — see /tmp/_rel_build.log"
+        return
+    fi
+    if grep -q "Nothing to be done for .release." <<<"$out"; then
+        fail "$label" "'release' is declared but has no recipe"
+        return
+    fi
+    if [[ ! -x sort ]]; then
+        fail "$label" "make release produced no ./sort binary"
+        return
+    fi
+    release_size=$(stat -c%s sort)
+
+    if file sort 2>/dev/null | grep -q "not stripped"; then
+        fail "$label" "the release binary still has its symbol table — is 'strip' in the target?"
+        return
+    fi
+    if (( release_size >= debug_size )); then
+        fail "$label" "release ($release_size B) is not smaller than debug ($debug_size B)"
+        return
+    fi
+
+    # Object files carry no record of the flags that produced them, so a
+    # release target that skips fclean silently links the DEBUG objects and
+    # still yields a smaller, stripped binary. Only a real rebuild proves it.
+    obj_after=$(stat -c%.Y sort.o 2>/dev/null || echo 0)
+    if [[ "$obj_after" == "$obj_before" ]]; then
+        fail "$label" "release relinked the debug objects — 'release' must fclean first"
+        return
+    fi
+
+    # ...and a rebuild with the debug flags is not a release build.
+    # (Captured first: 'make -n | grep -q' would SIGPIPE make, and this
+    # script runs under 'set -o pipefail'.)
+    local dry
+    dry=$(make -n release 2>/dev/null)
+    if ! grep -qE -- '-O[123sz]' <<<"$dry"; then
+        fail "$label" "release rebuilds, but with no optimisation level — expected -O2"
+        return
+    fi
+
+    pass "$label ($debug_size B -> $release_size B)"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -214,6 +274,8 @@ The directory must contain your finished multi-file project:
   5. ./sort runs clean under valgrind --leak-check=full.
   6. A rebuild with -fsanitize=address -fsanitize=undefined runs clean
      on the same input.
+  7. make release rebuilds from scratch and produces a stripped binary
+     smaller than the debug build.
 
 HELP
     exit 0
@@ -234,6 +296,7 @@ if check_make; then
     check_sort_no_args
     check_valgrind
     check_sanitisers
+    check_release
 fi
 
 echo ""
